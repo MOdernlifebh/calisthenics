@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bodyweight Fitness Pro</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --background: #f8f9fa;
+            --danger: #e74c3c;
+            --rest-day: #9b59b6;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            padding: 20px;
+            background: var(--background);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .day-card {
+            background: white;
+            padding: 15px;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            user-select: none;
+        }
+
+        .day-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .day-card.completed {
+            background: #2ecc71;
+            color: white;
+        }
+
+        .day-card.rest-day {
+            background: var(--rest-day);
+            color: white;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .active {
+            display: block;
+        }
+
+        .exercise-img {
+            width: 100%;
+            max-width: 300px;
+            height: auto;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .timer {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin: 20px 0;
+            color: var(--secondary);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .timer.pulsing {
+            animation: pulse 1s infinite;
+        }
+
+        button {
+            background: var(--secondary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            transition: opacity 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .nav-button {
+            background: #7f8c8d;
+            margin-bottom: 20px;
+        }
+
+        .reset-container {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 15px;
+        }
+
+        .reset-button {
+            background: var(--danger);
+            padding: 8px 16px;
+            font-size: 0.9em;
+        }
+
+        /* Preview Modal Styles */
+        .preview-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            z-index: 1000;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .preview-exercises {
+            margin: 15px 0;
+        }
+
+        .exercise-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .exercise-item.rest-day {
+            background: var(--rest-day);
+            color: white;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+
+        .preview-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        /* Preview Image Styles */
+        .preview-exercise-image {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .exercise-preview-content {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .exercise-preview-text {
+            flex-grow: 1;
+        }
+
+        .exercise-preview-text h4 {
+            margin: 0 0 5px 0;
+        }
+
+        .exercise-preview-text p {
+            margin: 0;
+            font-size: 0em;
+            color: #666;
+        }
+
+        .exercise-item.rest-day .exercise-preview-text p {
+            color: rgba(255,255,255,0.9);
+        }
+    </style>
+</head>
+<body>
+<a href="index.html" class="nav-button">← Back to Home</a>
+    <div class="container">
+        <div id="mainMenu" class="screen active">
+            <h1>كالستنكس المستوى التحضيري 30-يوم</h1>
+            <div class="calendar" id="calendar"></div>
+            <div class="reset-container">
+                <button class="reset-button" onclick="resetAllProgress()">إعادة تعيين ايام التقدم</button>
+            </div>
+        </div>
+        <div id="workoutScreen" class="screen">
+            <button class="nav-button" onclick="showScreen('mainMenu')">← العودة إلى القائمة</button>
+            <h2 id="exerciseTitle"></h2>
+            <img class="exercise-img" id="exerciseImage">
+            <div class="timer" id="timer"></div>
+            <div id="exerciseInfo"></div>
+            <div class="button-group">
+                <button id="doneButton">تم الانتهاء من التمرين</button>
+                <button id="restButton" class="hidden">تخطي الراحة</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div id="previewModal" class="preview-modal hidden">
+        <h3> معاينة <span id="previewDayNumber"></span> اليوم</h3>
+        <div class="preview-exercises" id="previewExercises"></div>
+        <div class="preview-actions">
+            <button class="start-workout-button" onclick="startWorkout()">بدء التمرين</button>
+            <button onclick="hidePreview()">إغلاق</button>
+        </div>
+    </div>
+    <div id="modalOverlay" class="modal-overlay hidden"></div>
+
+    <script>
+        // ===== COMPLETE 30-DAY WORKOUT PLAN =====
+        const workoutPlan = {
+            1: [
+                { name: "الأحماء", description: "القفز مع فتح الذراعين من الجانب باستقامة في نفس الوقت وعند النزل ضم الذراعين كرر الحركة لمدة 20 ثانية، <br>يعمل هذا التمرين على احماء الجسم بالكامل وتهيئته لبدء التمرين.", image: "image/jumping_ jacks.gif" },
+                { name: "ضغط", description: "3 - 4 sets<br> \ الضغط بثني الركبتين ", image: "image/knee-push-ups.gif" },
+                { name: "التعلق على البار", description: "3 - 4 sets<br> \ التعلق على البار لاقصى وقت ممكن ", image: "image/hanging.png" },
+                { name: "ضغط ترايسبس", description: "3 - 4 sets<br> \ ضغط ترايسبس على مرتفع مع ثني الركبتين ", image: "image/BENCH_DIPS.gif" },
+                { name: "عقلة استرالية", description: "3 - 4 sets<br> \ عقلة استرالية مع المحافظ على ثني الركبتين 90 درجة ", image: "image/Australian_pull_up_bent_knee.gif" },
+                { name: "رفع الركبتين", description: " \ على المتوازي رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/captains-chair-knee-raise.gif" },
+                { name: "رفع الركبتين", description: " \ على العقلة رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/hanging-leg-raise-movement.gif" },
+                { name: "البلانك", description: "3 sets<br> \ تمرين البلانك ثبات 30 ثانية  ", image: "image/plank.gif" },
+                { name: "هولو بودي", description: "3 مجموعات<br> \ تمرين هولو بودي ثبات 30 ثانية  ", image: "image/hollow_body_1.png" }
+            ],
+            2: [
+                { name: "الأحماء", description: "القفز مع فتح الذراعين من الجانب باستقامة في نفس الوقت وعند النزل ضم الذراعين كرر الحركة لمدة 20 ثانية، <br>يعمل هذا التمرين على احماء الجسم بالكامل وتهيئته لبدء التمرين.", image: "image/jumping_ jacks.gif" },
+                { name: "التعلق على البار", description: "3 - 4 مجموعات<br> \ التعلق على البار بقبضة معكوسة لاقصى وقت ممكن ", image: "image/chin-ups-hanging.jpg" },
+                { name: "السير على اليدين", description: "3 - 4 مجموعات<br> \ السير على اليدين للامام ثم للخلف مع المحافضة على استقامة اليدين والقدمين والظهر ", image: "image/Inchworms.gif" },
+                { name: "عقلة استرالية", description: "3 - 4 مجموعات<br> \ عقلة استرالية بقبضة معكوسة مع المحافظ على ثني الركبتين 90 درجة ", image: "image/Australian_chin_up_bent_knee.gif" },
+                { name: "ضغط ترايسبس", description: "3 - 4 مجموعات<br>  \ ضغط ترايسبس على مرتفع مع ثني الركبتين ", image: "image/BENCH_DIPS.gif" },
+                { name: "رفع الركبتين", description: " \ على المتوازي رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/captains-chair-knee-raise.gif" },
+                { name: "رفع الركبتين", description: " \ على العقلة رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/hanging-leg-raise-movement.gif" }
+            ],
+            3: [
+                { name: "Active Recovery", description: "Yoga Flow\n30-45 minutes", image: "image/walking.gif" }
+            ],
+            4: [
+                { name: "الأحماء", description: "القفز مع فتح الذراعين من الجانب باستقامة في نفس الوقت وعند النزل ضم الذراعين كرر الحركة لمدة 20 ثانية، <br>يعمل هذا التمرين على احماء الجسم بالكامل وتهيئته لبدء التمرين.", image: "image/jumping_ jacks.gif" },
+                { name: "ضغط", description: "3 - 4 sets<br> \ الضغط بثني الركبتين ", image: "image/knee-push-ups.gif" },
+                { name: "التعلق على البار", description: "3 - 4 sets<br> \ التعلق على البار لاقصى وقت ممكن ", image: "image/hanging.png" },
+                { name: "ضغط ترايسبس", description: "3 - 4 sets<br> \ ضغط ترايسبس على مرتفع مع ثني الركبتين ", image: "image/BENCH_DIPS.gif" },
+                { name: "عقلة استرالية", description: "3 - 4 sets<br> \ عقلة استرالية مع المحافظ على ثني الركبتين 90 درجة ", image: "image/Australian_pull_up_bent_knee.gif" },
+                { name: "رفع الركبتين", description: " \ على المتوازي رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/captains-chair-knee-raise.gif" },
+                { name: "رفع الركبتين", description: " \ على العقلة رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/hanging-leg-raise-movement.gif" },
+                { name: "البلانك", description: "3 sets<br> \ تمرين البلانك ثبات 30 ثانية  ", image: "image/plank.gif" },
+                { name: "هولو بودي", description: "3 مجموعات<br> \ تمرين هولو بودي ثبات 30 ثانية  ", image: "image/hollow_body_1.png" }
+            ],
+            5: [
+                { name: "الأحماء", description: "القفز مع فتح الذراعين من الجانب باستقامة في نفس الوقت وعند النزل ضم الذراعين كرر الحركة لمدة 20 ثانية، <br>يعمل هذا التمرين على احماء الجسم بالكامل وتهيئته لبدء التمرين.", image: "image/jumping_ jacks.gif" },
+                { name: "التعلق على البار", description: "3 - 4 مجموعات<br> \ التعلق على البار بقبضة معكوسة لاقصى وقت ممكن ", image: "image/chin-ups-hanging.jpg" },
+                { name: "السير على اليدين", description: "3 - 4 مجموعات<br> \ السير على اليدين للامام ثم للخلف مع المحافضة على استقامة اليدين والقدمين والظهر ", image: "image/Inchworms.gif" },
+                { name: "عقلة استرالية", description: "3 - 4 مجموعات<br> \ عقلة استرالية بقبضة معكوسة مع المحافظ على ثني الركبتين 90 درجة ", image: "image/Australian_chin_up_bent_knee.gif" },
+                { name: "ضغط ترايسبس", description: "3 - 4 مجموعات<br>  \ ضغط ترايسبس على مرتفع مع ثني الركبتين ", image: "image/BENCH_DIPS.gif" },
+                { name: "رفع الركبتين", description: " \ على المتوازي رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/captains-chair-knee-raise.gif" },
+                { name: "رفع الركبتين", description: " \ على العقلة رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/hanging-leg-raise-movement.gif" }
+            ],
+            6: [
+                { name: "Active Recovery", description: "Yoga Flow\n30-45 minutes", image: "https://example.com/yoga.gif" }
+            ],
+            7: [
+                { name: "Active Recovery", description: "Yoga Flow\n30-45 minutes", image: "https://example.com/yoga.gif" }
+            ],
+            8: [
+                { name: "الأحماء", description: "القفز مع فتح الذراعين من الجانب باستقامة في نفس الوقت وعند النزل ضم الذراعين كرر الحركة لمدة 20 ثانية، <br>يعمل هذا التمرين على احماء الجسم بالكامل وتهيئته لبدء التمرين.", image: "image/jumping_ jacks.gif" },
+                { name: "التعلق على البار", description: "3 - 4 sets<br> \ التعلق على البار بقبضة ضيقة لاقصى وقت ممكن ", image: "image/close_grip_hanging.png" },
+                { name: "ضغط", description: "3 - 4 sets<br> \ الضغط بثني الركبتين ", image: "image/knee-push-ups.gif" },
+                { name: "عقلة استرالية", description: "3 - 4 sets<br> \ عقلة استرالية بقبضة ضيقة مع المحافظ على ثني الركبتين 90 درجة ", image: "image/Australian_close_grip_pull_up_bent_knee.gif" },
+                { name: "السير على اليدين", description: "3 - 4 sets<br> \ السير على اليدين من فوق مرتفع للامام ثم للخلف مع المحافضة على استقامة اليدين والقدمين", image: "image/decline_inchworm.gif" },
+                { name: "رفع الركبتين", description: " \ على المتوازي رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/captains-chair-knee-raise.gif" },
+                { name: "رفع الركبتين", description: " \ على العقلة رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/hanging-leg-raise-movement.gif" },
+                { name: "البلانك", description: "3 sets<br> \ تمرين البلانك ثبات 30 ثانية  ", image: "image/plank.gif" },
+                { name: "هولو بودي", description: "3 مجموعات<br> \ تمرين هولو بودي ثبات 30 ثانية  ", image: "image/hollow_body_1.png" }
+            ],
+            9: [
+                { name: "الأحماء", description: "القفز مع فتح الذراعين من الجانب باستقامة في نفس الوقت وعند النزل ضم الذراعين كرر الحركة لمدة 20 ثانية، <br>يعمل هذا التمرين على احماء الجسم بالكامل وتهيئته لبدء التمرين.", image: "image/jumping_ jacks.gif" },
+                { name: "على المتوازي", description: "3 - 4 مجموعات<br> \ على المتوازي الطلوع والنزول عن طريق الاكتاف من الامام ولوح الكتف من الخلف  ", image: "image/dip_shrugs.gif" },
+                { name: "التعلق على البار", description: "3 - 4 مجموعات<br> \ التعلق على البار بقبضة ضيقة معكوسة لاقصى وقت ممكن ", image: "image/close_chin_up_hanging.png" },
+                { name: "السير على اليدين", description: "3 - 4 مجموعات<br> \ السير على اليدين للامام ثم للخلف مع المحافضة على استقامة اليدين والقدمين والظهر ", image: "image/Inchworms.gif" },
+                { name: "عقلة استرالية", description: "3 - 4 مجموعات<br>  \ عقلة استرالية بقبضة ضيقة معكوسة مع المحافظ على ثني الركبتين 90 درجة ", image: "image/Australian_close_grip_pull_up_bent_knee.gif" },
+                { name: "رفع الركبتين", description: " \ على المتوازي رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/captains-chair-knee-raise.gif" },
+                { name: "رفع الركبتين", description: " \ على العقلة رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/hanging-leg-raise-movement.gif" }
+            ],
+           10: [
+                { name: "Active Recovery", description: "Yoga Flow\n30-45 minutes", image: "https://example.com/yoga.gif" }
+            ],
+           11: [
+                { name: "الأحماء", description: "القفز مع فتح الذراعين من الجانب باستقامة في نفس الوقت وعند النزل ضم الذراعين كرر الحركة لمدة 20 ثانية، <br>يعمل هذا التمرين على احماء الجسم بالكامل وتهيئته لبدء التمرين.", image: "image/jumping_ jacks.gif" },
+                { name: "التعلق على البار", description: "3 - 4 sets<br> \ التعلق على البار بقبضة ضيقة لاقصى وقت ممكن ", image: "image/close_grip_hanging.png" },
+                { name: "ضغط", description: "3 - 4 sets<br> \ الضغط بثني الركبتين ", image: "image/knee-push-ups.gif" },
+                { name: "عقلة استرالية", description: "3 - 4 sets<br> \ عقلة استرالية بقبضة ضيقة مع المحافظ على ثني الركبتين 90 درجة ", image: "image/Australian_close_grip_pull_up_bent_knee.gif" },
+                { name: "السير على اليدين", description: "3 - 4 sets<br> \ السير على اليدين من فوق مرتفع للامام ثم للخلف مع المحافضة على استقامة اليدين والقدمين", image: "image/decline_inchworm.gif" },
+                { name: "رفع الركبتين", description: " \ على المتوازي رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/captains-chair-knee-raise.gif" },
+                { name: "رفع الركبتين", description: " \ على العقلة رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/hanging-leg-raise-movement.gif" },
+                { name: "البلانك", description: "3 sets<br> \ تمرين البلانك ثبات 30 ثانية  ", image: "image/plank.gif" },
+                { name: "هولو بودي", description: "3 مجموعات<br> \ تمرين هولو بودي ثبات 30 ثانية  ", image: "image/hollow_body_1.png" }
+            ],
+            12: [
+                { name: "الأحماء", description: "القفز مع فتح الذراعين من الجانب باستقامة في نفس الوقت وعند النزل ضم الذراعين كرر الحركة لمدة 20 ثانية، <br>يعمل هذا التمرين على احماء الجسم بالكامل وتهيئته لبدء التمرين.", image: "image/jumping_ jacks.gif" },
+                { name: "على المتوازي", description: "3 - 4 مجموعات<br> \ على المتوازي الطلوع والنزول عن طريق الاكتاف من الامام ولوح الكتف من الخلف  ", image: "image/dip_shrugs.gif" },
+                { name: "التعلق على البار", description: "3 - 4 مجموعات<br> \ التعلق على البار بقبضة ضيقة معكوسة لاقصى وقت ممكن ", image: "image/close_chin_up_hanging.png" },
+                { name: "السير على اليدين", description: "3 - 4 مجموعات<br> \ السير على اليدين للامام ثم للخلف مع المحافضة على استقامة اليدين والقدمين والظهر ", image: "image/Inchworms.gif" },
+                { name: "عقلة استرالية", description: "3 - 4 مجموعات<br>  \ عقلة استرالية بقبضة ضيقة معكوسة مع المحافظ على ثني الركبتين 90 درجة ", image: "image/Australian_close_grip_pull_up_bent_knee.gif" },
+                { name: "رفع الركبتين", description: " \ على المتوازي رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/captains-chair-knee-raise.gif" },
+                { name: "رفع الركبتين", description: " \ على العقلة رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/hanging-leg-raise-movement.gif" }
+            ],
+           13: [
+                { name: "Active Recovery", description: "Yoga Flow\n30-45 minutes", image: "https://example.com/yoga.gif" }
+            ],
+           14: [
+                { name: "Active Recovery", description: "Yoga Flow\n30-45 minutes", image: "https://example.com/yoga.gif" }
+            ],
+           15: [
+                { name: "الأحماء", description: "القفز مع فتح الذراعين من الجانب باستقامة في نفس الوقت وعند النزل ضم الذراعين كرر الحركة لمدة 20 ثانية، <br>يعمل هذا التمرين على احماء الجسم بالكامل وتهيئته لبدء التمرين.", image: "image/jumping_ jacks.gif" },
+                { name: "القفز لوضعية العقلة", description: "3 - 4 sets<br> \ القفز لوضعية العقلة ثم النزول للاسف بتحكم مع فرد الذراعين قبل ملامسة الارض ", image: "image/negative_pull_up.gif" },
+                { name: "ضغط ضيق", description: "3 - 4 sets<br> \ ضغط ضيق بثني الركبتين والكفين قريبين من بعض ", image: "image/Knee_Diamond_Push-Up.gif" },
+                { name: "عقلة استرالية", description: "3 - 4 sets<br> \ عقلة استرالية والارجل مفرودة ", image: "image/Australian_pull_up.gif" },
+                { name: "ضغط ترايسبس", description: "3 - 4 sets<br> \ ضغط ترايسبس بستخدام مرتفع والارجل مفرودة", image: "image/CHAIR-DIPS.gif" },
+                { name: "رفع الركبتين", description: " \ على المتوازي رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/captains-chair-knee-raise.gif" },
+                { name: "رفع الركبتين", description: " \ على العقلة رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/hanging-leg-raise-movement.gif" },
+                { name: "البلانك", description: "3 sets<br> \ تمرين البلانك ثبات 30 ثانية  ", image: "image/plank.gif" },
+                { name: "هولو بودي", description: "3 مجموعات<br> \ تمرين هولو بودي ثبات 30 ثانية  ", image: "image/hollow_body_1.png" }
+            ],
+           16: [
+                { name: "الأحماء", description: "القفز مع فتح الذراعين من الجانب باستقامة في نفس الوقت وعند النزل ضم الذراعين كرر الحركة لمدة 20 ثانية، <br>يعمل هذا التمرين على احماء الجسم بالكامل وتهيئته لبدء التمرين.", image: "image/jumping_ jacks.gif" },
+                { name: "على المتوازي", description: "3 - 4 مجموعات<br> \ النزول والطلوع على المتوازي بثني المرفقين بشكل بسيط مع المحافظه على ثبات الجسم ", image: "image/Dips.gif" },
+                { name: "القفز لوضعية العقلة", description: "3 - 4 مجموعات<br> \ القفز لوضعية العقلة بقبضة معكوسة ثم النزول للاسف بتحكم مع فرد الذراعين قبل ملامسة الارض ", image: "image/negative_chin_up.gif" },
+                { name: "ضغط ترايسبس", description: "3 - 4 مجموعات<br> \ ضغط ترايسبس بستخدام مرتفع والارجل مفرودة ", image: "image/CHAIR-DIPS.gif" },
+                { name: "عقلة استرالية", description: "3 - 4 مجموعات<br>  \ عقلة استرالية قبضة معكوسة والارجل مفرودة ", image: "image/Australian_chin_up.gif" },
+                { name: "رفع الركبتين", description: " \ على المتوازي رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/captains-chair-knee-raise.gif" },
+                { name: "رفع الركبتين", description: " \ على العقلة رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/hanging-leg-raise-movement.gif" }
+            ],
+           17: [
+                { name: "Active Recovery", description: "Yoga Flow\n30-45 minutes", image: "https://example.com/yoga.gif" }
+            ],
+           18: [
+                { name: "الأحماء", description: "القفز مع فتح الذراعين من الجانب باستقامة في نفس الوقت وعند النزل ضم الذراعين كرر الحركة لمدة 20 ثانية، <br>يعمل هذا التمرين على احماء الجسم بالكامل وتهيئته لبدء التمرين.", image: "image/jumping_ jacks.gif" },
+                { name: "القفز لوضعية العقلة", description: "3 - 4 sets<br> \ القفز لوضعية العقلة ثم النزول للاسف بتحكم مع فرد الذراعين قبل ملامسة الارض ", image: "image/negative_pull_up.gif" },
+                { name: "ضغط ضيق", description: "3 - 4 sets<br> \ ضغط ضيق بثني الركبتين والكفين قريبين من بعض ", image: "image/Knee_Diamond_Push-Up.gif" },
+                { name: "عقلة استرالية", description: "3 - 4 sets<br> \ عقلة استرالية والارجل مفرودة ", image: "image/Australian_pull_up.gif" },
+                { name: "ضغط ترايسبس", description: "3 - 4 sets<br> \ ضغط ترايسبس بستخدام مرتفع والارجل مفرودة", image: "image/CHAIR-DIPS.gif" },
+                { name: "رفع الركبتين", description: " \ على المتوازي رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/captains-chair-knee-raise.gif" },
+                { name: "رفع الركبتين", description: " \ على العقلة رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/hanging-leg-raise-movement.gif" },
+                { name: "البلانك", description: "3 sets<br> \ تمرين البلانك ثبات 30 ثانية  ", image: "image/plank.gif" },
+                { name: "هولو بودي", description: "3 مجموعات<br> \ تمرين هولو بودي ثبات 30 ثانية  ", image: "image/hollow_body_1.png" }
+            ],
+            19: [
+                { name: "الأحماء", description: "القفز مع فتح الذراعين من الجانب باستقامة في نفس الوقت وعند النزل ضم الذراعين كرر الحركة لمدة 20 ثانية، <br>يعمل هذا التمرين على احماء الجسم بالكامل وتهيئته لبدء التمرين.", image: "image/jumping_ jacks.gif" },
+                { name: "على المتوازي", description: "3 - 4 مجموعات<br> \ النزول والطلوع على المتوازي بثني المرفقين بشكل بسيط مع المحافظه على ثبات الجسم ", image: "image/Dips.gif" },
+                { name: "القفز لوضعية العقلة", description: "3 - 4 مجموعات<br> \ القفز لوضعية العقلة بقبضة معكوسة ثم النزول للاسف بتحكم مع فرد الذراعين قبل ملامسة الارض ", image: "image/negative_chin_up.gif" },
+                { name: "ضغط ترايسبس", description: "3 - 4 مجموعات<br> \ ضغط ترايسبس بستخدام مرتفع والارجل مفرودة ", image: "image/CHAIR-DIPS.gif" },
+                { name: "عقلة استرالية", description: "3 - 4 مجموعات<br>  \ عقلة استرالية قبضة معكوسة والارجل مفرودة ", image: "image/Australian_chin_up.gif" },
+                { name: "رفع الركبتين", description: " \ على المتوازي رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/captains-chair-knee-raise.gif" },
+                { name: "رفع الركبتين", description: " \ على العقلة رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/hanging-leg-raise-movement.gif" }
+            ],
+           20: [
+                { name: "Active Recovery", description: "Yoga Flow\n30-45 minutes", image: "https://example.com/yoga.gif" }
+            ],
+           21: [
+                { name: "Active Recovery", description: "Yoga Flow\n30-45 minutes", image: "https://example.com/yoga.gif" }
+            ],
+           22: [
+                { name: "الأحماء", description: "القفز مع فتح الذراعين من الجانب باستقامة في نفس الوقت وعند النزل ضم الذراعين كرر الحركة لمدة 20 ثانية، <br>يعمل هذا التمرين على احماء الجسم بالكامل وتهيئته لبدء التمرين.", image: "image/jumping_ jacks.gif" },
+                { name: "القفز لوضعية العقلة ضيق", description: "3 - 4 sets<br> \ القفز لوضعية العقلة ضيق ثم النزول للاسف بتحكم مع فرد الذراعين قبل ملامسة الارض ", image: "image/negative_close_pull_up.gif" },
+                { name: "الضغط على سطح مرتفع", description: "3 - 4 sets<br> \ الضغط على سطح مرتفع مع الحفاظ على استقامة الركبتين ", image: "image/incline-push-up-bench.gif" },
+                { name: "عقلة استرالية", description: "3 - 4 sets<br> \ عقلة استرالية قبضة ضيقة والارجل مفرودة", image: "image/Australian_close_pull_up.gif" },
+                { name: "السير على اليدين", description: "3 - 4 sets<br> \ السير على اليدين من فوق مرتفع للامام ثم للخلف مع المحافضة على استقامة اليدين والقدمين", image: "image/decline_inchworm.gif" },
+                { name: "رفع الركبتين", description: " \ على المتوازي رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/captains-chair-knee-raise.gif" },
+                { name: "رفع الركبتين", description: " \ على العقلة رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/hanging-leg-raise-movement.gif" },
+                { name: "البلانك", description: "3 sets<br> \ تمرين البلانك ثبات 30 ثانية  ", image: "image/plank.gif" },
+                { name: "هولو بودي", description: "3 مجموعات<br> \ تمرين هولو بودي ثبات 30 ثانية  ", image: "image/hollow_body_1.png" }
+            ],
+           23: [
+                { name: "الأحماء", description: "القفز مع فتح الذراعين من الجانب باستقامة في نفس الوقت وعند النزل ضم الذراعين كرر الحركة لمدة 20 ثانية، <br>يعمل هذا التمرين على احماء الجسم بالكامل وتهيئته لبدء التمرين.", image: "image/jumping_ jacks.gif" },
+                { name: "ضغط ضيق", description: "3 - 4 مجموعات<br> \ ضغط ضيق على سطح مرتفع مع الحفاظ على استقامة الركبتين ", image: "image/incline_close_push_up.gif" },
+                { name: "القفز لوضعية العقلة", description: "3 - 4 مجموعات<br> \ القفز لوضعية العقلة بقبضة معكوسة ضيقة ثم النزول للاسف بتحكم مع فرد الذراعين قبل ملامسة الارض ", image: "image/negative_close_chin_up.gif" },
+                { name: "على المتوازي", description: "3 - 4 مجموعات<br> \ النزول والطلوع على المتوازي بثني المرفقين بشكل بسيط مع المحافظه على ثبات الجسم ", image: "image/chair-bar-dips.gif" },
+                { name: "عقلة استرالية", description: "3 - 4 مجموعات<br>  \ عقلة استرالية قبضة ضيقة معكوسة والارجل مفرودة ", image: "image/Australian_close_grip_pull_up.gif" },
+                { name: "رفع الركبتين", description: " \ على المتوازي رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/captains-chair-knee-raise.gif" },
+                { name: "رفع الركبتين", description: " \ على العقلة رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/hanging-leg-raise-movement.gif" }
+            ],
+           24: [
+                { name: "Active Recovery", description: "Yoga Flow\n30-45 minutes", image: "https://example.com/yoga.gif" }
+            ],
+           25: [
+                { name: "الأحماء", description: "القفز مع فتح الذراعين من الجانب باستقامة في نفس الوقت وعند النزل ضم الذراعين كرر الحركة لمدة 20 ثانية، <br>يعمل هذا التمرين على احماء الجسم بالكامل وتهيئته لبدء التمرين.", image: "image/jumping_ jacks.gif" },
+                { name: "القفز لوضعية العقلة ضيق", description: "3 - 4 sets<br> \ القفز لوضعية العقلة ضيق ثم النزول للاسف بتحكم مع فرد الذراعين قبل ملامسة الارض ", image: "image/negative_close_pull_up.gif" },
+                { name: "الضغط على سطح مرتفع", description: "3 - 4 sets<br> \ الضغط على سطح مرتفع مع الحفاظ على استقامة الركبتين ", image: "image/incline-push-up-bench.gif" },
+                { name: "عقلة استرالية", description: "3 - 4 sets<br> \ عقلة استرالية قبضة ضيقة والارجل مفرودة", image: "image/Australian_close_pull_up.gif" },
+                { name: "السير على اليدين", description: "3 - 4 sets<br> \ السير على اليدين من فوق مرتفع للامام ثم للخلف مع المحافضة على استقامة اليدين والقدمين", image: "image/decline_inchworm.gif" },
+                { name: "رفع الركبتين", description: " \ على المتوازي رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/captains-chair-knee-raise.gif" },
+                { name: "رفع الركبتين", description: " \ على العقلة رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/hanging-leg-raise-movement.gif" },
+                { name: "البلانك", description: "3 sets<br> \ تمرين البلانك ثبات 30 ثانية  ", image: "image/plank.gif" },
+                { name: "هولو بودي", description: "3 مجموعات<br> \ تمرين هولو بودي ثبات 30 ثانية  ", image: "image/hollow_body_1.png" }
+            ],
+            26: [
+                { name: "الأحماء", description: "القفز مع فتح الذراعين من الجانب باستقامة في نفس الوقت وعند النزل ضم الذراعين كرر الحركة لمدة 20 ثانية، <br>يعمل هذا التمرين على احماء الجسم بالكامل وتهيئته لبدء التمرين.", image: "image/jumping_ jacks.gif" },
+                { name: "ضغط ضيق", description: "3 - 4 مجموعات<br> \ ضغط ضيق على سطح مرتفع مع الحفاظ على استقامة الركبتين ", image: "image/incline_close_push_up.gif" },
+                { name: "القفز لوضعية العقلة", description: "3 - 4 مجموعات<br> \ القفز لوضعية العقلة بقبضة معكوسة ضيقة ثم النزول للاسف بتحكم مع فرد الذراعين قبل ملامسة الارض ", image: "image/negative_close_chin_up.gif" },
+                { name: "على المتوازي", description: "3 - 4 مجموعات<br> \ النزول والطلوع على المتوازي بثني المرفقين بشكل بسيط مع المحافظه على ثبات الجسم ", image: "image/chair-bar-dips.gif" },
+                { name: "عقلة استرالية", description: "3 - 4 مجموعات<br>  \ عقلة استرالية قبضة ضيقة معكوسة والارجل مفرودة ", image: "image/Australian_close_grip_pull_up.gif" },
+                { name: "رفع الركبتين", description: " \ على المتوازي رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/captains-chair-knee-raise.gif" },
+                { name: "رفع الركبتين", description: " \ على العقلة رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/hanging-leg-raise-movement.gif" }
+            ],
+           27: [
+                { name: "Active Recovery", description: "Yoga Flow\n30-45 minutes", image: "https://example.com/yoga.gif" }
+            ],
+           28: [
+                { name: "Active Recovery", description: "Yoga Flow\n30-45 minutes", image: "https://example.com/yoga.gif" }
+            ],
+           29: [
+                { name: "الأحماء", description: "القفز مع فتح الذراعين من الجانب باستقامة في نفس الوقت وعند النزل ضم الذراعين كرر الحركة لمدة 20 ثانية، <br>يعمل هذا التمرين على احماء الجسم بالكامل وتهيئته لبدء التمرين.", image: "image/jumping_ jacks.gif" },
+                { name: "ضغط", description: "3 - 4 sets<br> \ تمرين الضغط العادي ", image: "image/push-ups.gif" },
+                { name: "القفز لوضعية العقلة", description: "3 - 4 sets<br> \ القفز لوضعية العقلة ثم النزول للاسف بتحكم مع فرد الذراعين قبل ملامسة الارض ", image: "image/negative_pull_up.gif" },
+                { name: "ضغط ترايسبس", description: "3 - 4 sets<br> \ ضغط ترايسبس بستخدام مرتفع والارجل مفرودة ", image: "image/CHAIR-DIPS.gif" },
+                { name: "عقلة استرالية", description: "3 - 4 sets<br> \ عقلة استرالية والارجل مفرودة", image: "image/Australian_pull_up.gif" },
+                { name: "رفع الركبتين", description: " \ على المتوازي رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/captains-chair-knee-raise.gif" },
+                { name: "رفع الركبتين", description: " \ على العقلة رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/hanging-leg-raise-movement.gif" },
+                { name: "البلانك", description: "3 sets<br> \ تمرين البلانك ثبات 30 ثانية  ", image: "image/plank.gif" },
+                { name: "هولو بودي", description: "3 مجموعات<br> \ تمرين هولو بودي ثبات 30 ثانية  ", image: "image/hollow_body_1.png" }
+            ],
+           30: [
+                { name: "الأحماء", description: "القفز مع فتح الذراعين من الجانب باستقامة في نفس الوقت وعند النزل ضم الذراعين كرر الحركة لمدة 20 ثانية، <br>يعمل هذا التمرين على احماء الجسم بالكامل وتهيئته لبدء التمرين.", image: "image/jumping_ jacks.gif" },
+                { name: "القفز لوضعية العقلة", description: "3 - 4 مجموعات<br> \ القفز لوضعية العقلة بقبضة معكوس ثم النزول بتحكم مع فرد الذراعين قبل ملامسة الارض ", image: "image/negative_chin_up.gif" },
+                { name: "ضغط", description: "3 - 4 مجموعات<br> \ ضغط والرجلين على سطح مرتفع", image: "image/decline_push_up.gif" },
+                { name: "عقلة استرالية", description: "3 - 4 مجموعات<br> \ عقلة استرالية قبضة معكوسة والارجل مفرودة ", image: "image/Australian_chin_up.gif" },
+                { name: "ضغط ترايسبس", description: "3 - 4 مجموعات<br>  \ ضغط ترايسبس بستخدام مرتفع والارجل مفرودة ", image: "image/CHAIR-DIPS.gif" },
+                { name: "رفع الركبتين", description: " \ على المتوازي رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/captains-chair-knee-raise.gif" },
+                { name: "رفع الركبتين", description: " \ على العقلة رفع الركبتين 5 - 3 عدات ثم ثبات الركبتين بزاوية 90 درجة قدر المستطاع ", image: "image/hanging-leg-raise-movement.gif" }
+            ]
+        };
+
+        // ===== APP STATE =====
+        let currentState = {
+            day: 1,
+            exerciseIndex: 0,
+            timer: null,
+            previewDay: null,
+            completedDays: JSON.parse(localStorage.getItem('completedDays') || '[]')
+        };
+
+        // ===== CALENDAR FUNCTIONS =====
+        function initializeCalendar() {
+            const calendar = document.getElementById('calendar');
+            calendar.innerHTML = '';
+            
+            for (let i = 1; i <= 30; i++) {
+                const day = document.createElement('div');
+                day.className = `day-card ${currentState.completedDays.includes(i) ? 'completed' : ''}`;
+                
+                if (workoutPlan[i]?.[0]?.name === "Active Recovery") {
+                    day.classList.add('rest-day');
+                }
+
+                day.textContent = i;
+                day.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    if (currentState.completedDays.includes(i)) {
+                        removeCompletedDay(i);
+                    }
+                    return false;
+                };
+                day.onclick = () => handleDayClick(i);
+                calendar.appendChild(day);
+            }
+        }
+
+        function handleDayClick(day) {
+            if (currentState.completedDays.includes(day)) {
+                if (confirm('إزالة هذا اليوم من مكتمل؟')) {
+                    removeCompletedDay(day);
+                }
+                return;
+            }
+            
+            if (!workoutPlan[day]) {
+                alert('Workout plan for this day is coming soon!');
+                return;
+            }
+            
+            showPreview(day);
+        }
+
+        // ===== PREVIEW FUNCTIONS =====
+        function showPreview(day) {
+            currentState.previewDay = day;
+            const exercises = workoutPlan[day];
+            
+            document.getElementById('previewDayNumber').textContent = day;
+            const exercisesContainer = document.getElementById('previewExercises');
+            exercisesContainer.innerHTML = '';
+            
+            if (exercises[0].name === "Active Recovery") {
+                exercisesContainer.innerHTML = `
+                    <div class="exercise-item rest-day">
+                        <div class="exercise-preview-content">
+                            <img src="${exercises[0].image}" class="preview-exercise-image" alt="Recovery">
+                            <div class="exercise-preview-text">
+                                <h4>${exercises[0].name}</h4>
+                                <p>${exercises[0].description}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                exercises.forEach(exercise => {
+                    exercisesContainer.innerHTML += `
+                        <div class="exercise-item">
+                            <div class="exercise-preview-content">
+                                <img src="${exercise.image}" class="preview-exercise-image" alt="${exercise.name}">
+                                <div class="exercise-preview-text">
+                                    <h4>${exercise.name}</h4>
+                                    <p>${exercise.description.replace(/\n/g, '<br>')}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            document.getElementById('previewModal').classList.remove('hidden');
+            document.getElementById('modalOverlay').classList.remove('hidden');
+        }
+
+        function hidePreview() {
+            document.getElementById('previewModal').classList.add('hidden');
+            document.getElementById('modalOverlay').classList.add('hidden');
+        }
+
+        function startWorkout() {
+            hidePreview();
+            const day = currentState.previewDay;
+            
+            if (workoutPlan[day][0].name === "Activee Recovery") {
+                if (confirm("هل تريد وضع علامة على يوم الاسترداد هذا كمكتمل؟?")) {
+                    currentState.day = day;
+                    completeDay();
+                }
+                return;
+            }
+            
+            currentState.day = day;
+            currentState.exerciseIndex = 0;
+            showScreen('workoutScreen');
+            loadExercise();
+        }
+
+        // ===== WORKOUT FUNCTIONS =====
+        function loadExercise() {
+            const workout = workoutPlan[currentState.day];
+            if (!workout || currentState.exerciseIndex >= workout.length) {
+                completeDay();
+                return;
+            }
+
+            const exercise = workout[currentState.exerciseIndex];
+            document.getElementById('exerciseTitle').textContent = exercise.name;
+            document.getElementById('exerciseInfo').innerHTML = exercise.description.replace(/\n/g, '<br>');
+            document.getElementById('exerciseImage').src = exercise.image;
+            document.getElementById('doneButton').classList.remove('hidden');
+            document.getElementById('restButton').classList.add('hidden');
+            document.getElementById('timer').textContent = '';
+        }
+
+
+        function startRestTimer(seconds) {
+            let timeLeft = 90;
+            const timerElement = document.getElementById('timer');
+            timerElement.classList.add('pulsing');
+            
+            currentState.timer = setInterval(() => {
+                timeLeft--;
+                timerElement.textContent = `Next exercise in: ${timeLeft}s`;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(currentState.timer);
+                    timerElement.classList.remove('pulsing');
+                    currentState.exerciseIndex++;
+                    loadExercise();
+                }
+            }, 1000);
+        }
+
+        function completeDay() {
+            clearInterval(currentState.timer);
+            if (!currentState.completedDays.includes(currentState.day)) {
+                currentState.completedDays.push(currentState.day);
+                localStorage.setItem('completedDays', JSON.stringify(currentState.completedDays));
+                initializeCalendar();
+            }
+            showScreen('mainMenu');
+        }
+
+        // ===== PROGRESS MANAGEMENT =====
+        function removeCompletedDay(day) {
+            currentState.completedDays = currentState.completedDays.filter(d => d !== day);
+            localStorage.setItem('completedDays', JSON.stringify(currentState.completedDays));
+            initializeCalendar();
+        }
+
+        function resetAllProgress() {
+            if (confirm('هل أنت متأكد أنك تريد إعادة تعيين كل التقدم؟')) {
+                localStorage.removeItem('completedDays');
+                currentState.completedDays = [];
+                initializeCalendar();
+            }
+        }
+
+        // ===== UTILITY FUNCTIONS =====
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // ===== EVENT LISTENERS =====
+        document.addEventListener('DOMContentLoaded', initializeCalendar);
+        document.getElementById('doneButton').addEventListener('click', () => {
+            const workout = workoutPlan[currentState.day];
+            if (currentState.exerciseIndex < workout.length - 1) {
+                startRestTimer(30);
+                document.getElementById('doneButton').classList.add('hidden');
+                document.getElementById('restButton').classList.remove('hidden');
+            } else {
+                completeDay();
+            }
+        });
+        document.getElementById('restButton').addEventListener('click', () => {
+            clearInterval(currentState.timer);
+            document.getElementById('timer').classList.remove('pulsing');
+            currentState.exerciseIndex++;
+            loadExercise();
+        });
+    </script>
+</body>
+</html>
