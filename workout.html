@@ -134,20 +134,31 @@
             font-size: 0.9em;
         }
 
-        /* Preview Modal Styles */
-        .preview-modal {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.2);
-            z-index: 1000;
-            max-width: 400px;
-            width: 90%;
-        }
+        /* Update preview modal styles */
+.preview-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 400px; /* Maximum width for larger screens */
+    height: auto;
+    max-height: 80vh; /* Prevent modal from being too tall */
+    overflow-y: auto; /* Add scroll if content is too long */
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.2);
+    z-index: 1000;
+}
+
+/* Responsive adjustments for small phones */
+@media (max-width: 480px) {
+    .preview-modal {
+        width: 95%;
+        padding: 15px;
+        max-height: 85vh;
+    }
 
         .preview-exercises {
             margin: 15px 0;
@@ -202,19 +213,50 @@
             flex-grow: 1;
         }
 
-        .exercise-preview-text h4 {
-            margin: 0 0 5px 0;
+    .exercise-preview-text h4 {
+        font-size: 1em;
         }
 
-        .exercise-preview-text p {
-            margin: 0;
-            font-size: 0em;
-            color: #666;
+    .exercise-preview-text p {
+        font-size: 0.8em;
+    }
         }
 
         .exercise-item.rest-day .exercise-preview-text p {
             color: rgba(255,255,255,0.9);
         }
+/* Flexible content layout */
+.exercise-preview-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+}
+
+.preview-exercise-image {
+    flex-shrink: 0;
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.exercise-preview-text {
+    flex: 1;
+    min-width: 0; /* Prevent text overflow */
+}
+
+/* Stack buttons vertically on small screens */
+.preview-actions {
+    flex-direction: column;
+    gap: 10px;
+}
+
+@media (min-width: 481px) {
+    .preview-actions {
+        flex-direction: row;
+        justify-content: flex-end;
+    }
     </style>
 </head>
 <body>
